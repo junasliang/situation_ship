@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View } from 'react-native';
+import { View, Pressable } from 'react-native';
 import { JoinStatusSheet } from '../../components/JoinStatusSheet';
 import { ParticipantRow } from '../../components/ParticipantRow';
 import { useAppStore } from '../../store/AppStore';
@@ -10,6 +10,7 @@ import { Divider } from '../../ui/Divider';
 import { Screen } from '../../ui/Screen';
 import { Text } from '../../ui/Text';
 import { formatDateTime } from '../../utils/time';
+import { Ionicons } from '@expo/vector-icons';
 
 export const EventDetailScreen = ({
   event,
@@ -36,31 +37,89 @@ export const EventDetailScreen = ({
   );
 
   return (
-    <Screen>
-      <Button label="Back" variant="secondary" onPress={onBack} />
-      <Text style={{ fontSize: 24, fontWeight: '800' }}>{event.title}</Text>
-      <Text>Host: {host?.displayName ?? 'Unknown'}</Text>
-      <Text>{event.description || 'No description'}</Text>
-      <Text>{event.isTimeTBD ? 'Time TBD' : `${formatDateTime(event.startTime)} - ${formatDateTime(event.endTime)}`}</Text>
+    <Screen
+      titleAlign="center"
+      left={
+        <Pressable onPress={onBack} hitSlop={12}>
+          <Ionicons name="chevron-back" size={28} color="#111827" />
+        </Pressable>
+      }
+      title={
+        <Text style={{ fontSize: 18, fontWeight: '800' }}>
+          {event.title}
+        </Text>
+      }
+      subtitle={
+        <Text>
+          Host: {host?.displayName ?? 'Unknown'}
+        </Text>
+      }
+    >
+      {/* body 開始 */}
+
+      <Text>
+        {event.description || 'No description'}
+      </Text>
+
+      <Text>
+        {event.isTimeTBD
+          ? 'Time TBD'
+          : `${formatDateTime(event.startTime)} - ${formatDateTime(event.endTime)}`}
+      </Text>
 
       <Card>
         <Text style={{ fontWeight: '700' }}>Actions</Text>
-        {!joined ? <Button label="Join Event" onPress={() => setJoinModalVisible(true)} /> : <Button label="Enter Room" onPress={() => onEnterRoom(event)} />}
-        {isHost ? <Button label="Manage Participants" onPress={() => onManageParticipants(event)} variant="secondary" /> : null}
-        {isHost ? <Button label="Simulate End Event" variant="danger" onPress={() => endEvent(event.id)} /> : null}
+
+        {!joined ? (
+          <Button
+            label="Join Event"
+            onPress={() => setJoinModalVisible(true)}
+          />
+        ) : (
+          <Button
+            label="Enter Room"
+            onPress={() => onEnterRoom(event)}
+          />
+        )}
+
+        {isHost && (
+          <Button
+            label="Manage Participants"
+            onPress={() => onManageParticipants(event)}
+            variant="secondary"
+          />
+        )}
+
+        {isHost && (
+          <Button
+            label="Simulate End Event"
+            variant="danger"
+            onPress={() => endEvent(event.id)}
+          />
+        )}
       </Card>
 
       <Card>
         <Text style={{ fontWeight: '700' }}>Participants</Text>
+
         <View style={{ gap: 10 }}>
           {participantUsers.map(({ participant, user }) =>
-            user ? <ParticipantRow key={participant.userId} user={user} status={participant.status} /> : null
+            user ? (
+              <ParticipantRow
+                key={participant.userId}
+                user={user}
+                status={participant.status}
+              />
+            ) : null
           )}
         </View>
       </Card>
 
       <Divider />
-      <Text style={{ opacity: 0.8 }}>Room will disappear after event ends. Archive remains accessible for participants.</Text>
+
+      <Text style={{ opacity: 0.8 }}>
+        Room will disappear after event ends. Archive remains accessible for participants.
+      </Text>
 
       <JoinStatusSheet
         visible={joinModalVisible}
