@@ -3,7 +3,7 @@ import { View, Pressable } from 'react-native';
 import { JoinStatusSheet } from '../../components/JoinStatusSheet';
 import { ParticipantRow } from '../../components/ParticipantRow';
 import { useAppStore } from '../../store/AppStore';
-import { Event } from '../../types/models';
+import { Event, JoinStatus } from '../../types/models';
 import { Button } from '../../ui/Button';
 import { Card } from '../../ui/Card';
 import { Divider } from '../../ui/Divider';
@@ -39,33 +39,59 @@ export const EventDetailScreen = ({
   return (
     <Screen
       titleAlign="center"
-      left={
-        <Pressable onPress={onBack} hitSlop={12}>
-          <Ionicons name="chevron-back" size={28} color="#111827" />
-        </Pressable>
-      }
       title={
         <Text style={{ fontSize: 18, fontWeight: '800' }}>
           {event.title}
         </Text>
       }
-      subtitle={
+      // FIXME: Info in card
+      // subtitle={
+      //   <Text>
+      //     Host: {host?.displayName ?? 'Unknown'}
+      //   </Text>
+      // }
+      left={
+        <Pressable onPress={onBack} hitSlop={12}>
+          <Ionicons name="chevron-back" size={28} color="#111827" />
+        </Pressable>
+      }
+      
+    >
+      {/* body 開始 */}
+      <Card>
+        <Text style={{ fontWeight: '700' }}>Event Info</Text>
+
         <Text>
           Host: {host?.displayName ?? 'Unknown'}
         </Text>
-      }
-    >
-      {/* body 開始 */}
 
-      <Text>
+        <Text>
         {event.description || 'No description'}
-      </Text>
+        </Text>
 
-      <Text>
-        {event.isTimeTBD
-          ? 'Time TBD'
-          : `${formatDateTime(event.startTime)} - ${formatDateTime(event.endTime)}`}
-      </Text>
+        <Text>
+          {event.isTimeTBD
+            ? 'Time TBD'
+            : `${formatDateTime(event.startTime)} - ${formatDateTime(event.endTime)}`}
+        </Text>
+      </Card>
+
+      
+      <Card>
+        <Text style={{ fontWeight: '700' }}>Participants</Text>
+
+        <View style={{ gap: 10 }}>
+          {participantUsers.map(({ participant, user }) =>
+            user ? (
+              <ParticipantRow
+                key={participant.userId}
+                user={user}
+                status={participant.status}
+              />
+            ) : null
+          )}
+        </View>
+      </Card>
 
       <Card>
         <Text style={{ fontWeight: '700' }}>Actions</Text>
@@ -97,22 +123,6 @@ export const EventDetailScreen = ({
             onPress={() => endEvent(event.id)}
           />
         )}
-      </Card>
-
-      <Card>
-        <Text style={{ fontWeight: '700' }}>Participants</Text>
-
-        <View style={{ gap: 10 }}>
-          {participantUsers.map(({ participant, user }) =>
-            user ? (
-              <ParticipantRow
-                key={participant.userId}
-                user={user}
-                status={participant.status}
-              />
-            ) : null
-          )}
-        </View>
       </Card>
 
       <Divider />

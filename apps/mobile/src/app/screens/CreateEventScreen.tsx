@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View } from 'react-native';
+import { View, Pressable } from 'react-native';
 import { useAppStore } from '../../store/AppStore';
 import { Event } from '../../types/models';
 import { Avatar } from '../../ui/Avatar';
@@ -8,8 +8,15 @@ import { Card } from '../../ui/Card';
 import { Input } from '../../ui/Input';
 import { Screen } from '../../ui/Screen';
 import { Text } from '../../ui/Text';
+import { Ionicons } from '@expo/vector-icons';
 
-export const CreateEventScreen = ({ onCreated }: { onCreated: (event: Event) => void }) => {
+export const CreateEventScreen = ({ 
+  onCreated, 
+  onBack, 
+}: { 
+  onCreated: (event: Event) => void; 
+  onBack: () => void;
+}) => {
   const { users, currentUser, createEvent } = useAppStore();
 
   const [title, setTitle] = useState('');
@@ -26,9 +33,19 @@ export const CreateEventScreen = ({ onCreated }: { onCreated: (event: Event) => 
   };
 
   return (
-    <Screen>
-      <Text style={{ fontSize: 24, fontWeight: '800' }}>Create Event</Text>
+    <Screen
+      titleAlign="center"
+      left={
+        <Pressable onPress={onBack} hitSlop={12}>
+          <Ionicons name="chevron-back" size={28} color="#111827" />
+        </Pressable>
+      }
+      title={<Text style={{ fontSize: 18, fontWeight: '800' }}>Create Event</Text>}
+      // subtitle={<Text style={{ opacity: 0.8 }}>Fill in details and invite participants.</Text>}
+      scroll
+    >
       <Card>
+        <Text style={{ fontWeight: '700' }}>Event Info</Text>
         <Input placeholder="Title (required)" value={title} onChangeText={setTitle} />
         <Input placeholder="Description" value={description} onChangeText={setDescription} multiline />
         <Button label={isTimeTBD ? 'Time: TBD' : 'Time: Scheduled'} onPress={() => setIsTimeTBD((value) => !value)} variant="secondary" />

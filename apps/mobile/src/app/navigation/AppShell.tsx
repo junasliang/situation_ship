@@ -3,6 +3,7 @@ import { Pressable, SafeAreaView, View } from 'react-native';
 import { ArchiveDetailScreen } from '../screens/ArchiveDetailScreen';
 import { ArchiveScreen } from '../screens/ArchiveScreen';
 import { BoardScreen } from '../screens/BoardScreen';
+import { ChatScreen } from '../screens/ChatScreen';
 import { CreateEventScreen } from '../screens/CreateEventScreen';
 import { DemoLoginScreen } from '../screens/DemoLoginScreen';
 import { EventDetailScreen } from '../screens/EventDetailScreen';
@@ -12,7 +13,7 @@ import { RoomScreen } from '../screens/RoomScreen';
 import { useAppStore } from '../../store/AppStore';
 import { Text } from '../../ui/Text';
 import { colors } from '../../ui/theme';
-import { ArchiveRoute, BoardRoute, TabName, findEvent } from './types';
+import { ArchiveRoute, BoardRoute, ChatRoute, TabName, findEvent } from './types';
 
 const TabButton = ({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) => (
   <Pressable onPress={onPress} style={{ flex: 1, paddingVertical: 12, alignItems: 'center', backgroundColor: active ? '#d1fae5' : '#fff' }}>
@@ -26,9 +27,11 @@ export const AppShell = () => {
   const [activeTab, setActiveTab] = useState<TabName>('Board');
 
   const [boardStack, setBoardStack] = useState<BoardRoute[]>([{ name: 'Board' }]);
+  const [chatStack, setChatStack] = useState<ChatRoute[]>([{ name: 'Chat' }]);
   const [archiveStack, setArchiveStack] = useState<ArchiveRoute[]>([{ name: 'Archive' }]);
 
   const boardTop = boardStack[boardStack.length - 1];
+  const chatTop = chatStack[chatStack.length - 1];
   const archiveTop = archiveStack[archiveStack.length - 1];
 
   const boardEvent = useMemo(
@@ -46,12 +49,36 @@ export const AppShell = () => {
 
   const renderBoard = () => {
     if (boardTop.name === 'Board') {
-      return <BoardScreen onOpenEvent={(event) => setBoardStack((prev) => [...prev, { name: 'EventDetail', eventId: event.id }])} />;
+      return (
+        <BoardScreen
+          onOpenEvent={(event) =>
+            setBoardStack((prev) => [...prev, { name: 'EventDetail', eventId: event.id }])
+          }
+          onCreateEvent={() =>
+            setBoardStack((prev) => [...prev, { name: 'CreateEvent' }])
+          }
+        />
+      );
+    }
+
+    if (boardTop.name === 'CreateEvent') {
+      return (
+        <CreateEventScreen
+          onBack={() => setBoardStack((prev) => prev.slice(0, -1))}
+          onCreated={(event) => {
+            setBoardStack([
+              { name: 'Board' },
+              { name: 'EventDetail', eventId: event.id },
+            ]);
+          }}
+        />
+      );
     }
 
     if (boardTop.name === 'EventDetail') {
       if (!boardEvent) {
-        return <BoardScreen onOpenEvent={(event) => setBoardStack([{ name: 'EventDetail', eventId: event.id }])} />;
+        return <BoardScreen 
+          onOpenEvent={(event) => setBoardStack([{ name: 'EventDetail', eventId: event.id }])} />;
       }
       return (
         <EventDetailScreen
@@ -76,6 +103,35 @@ export const AppShell = () => {
     return null;
   };
 
+  const renderChat = () => {
+    if (chatTop.name === 'Chat') {
+      return (
+        <ChatScreen
+          onOpenChat={(event) =>
+            setChatStack(prev => [
+              ...prev,
+              { name: 'ChatRoom', eventId: event.id }
+            ])
+          }
+        />
+      );
+    }
+
+    if (chatTop.name === 'ChatRoom') {
+      const event = findEvent(events, chatTop.eventId);
+      if (!event) return null;
+
+      return (
+        <RoomScreen
+          event={event}
+          onBack={() =>
+            setChatStack(prev => prev.slice(0, -1))
+          }
+        />
+      );
+    }
+  };
+
   const renderArchive = () => {
     if (archiveTop.name === 'Archive') {
       return <ArchiveScreen onOpen={(event) => setArchiveStack((prev) => [...prev, { name: 'ArchiveDetail', eventId: event.id }])} />;
@@ -93,20 +149,36 @@ export const AppShell = () => {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
       <View style={{ flex: 1 }}>
         {activeTab === 'Board' ? renderBoard() : null}
-        {activeTab === 'Create' ? (
-          <CreateEventScreen
-            onCreated={(event) => {
-              setActiveTab('Board');
-              setBoardStack([{ name: 'Board' }, { name: 'EventDetail', eventId: event.id }]);
-            }}
-          />
-        ) : null}
+        {activeTab === 'Chat' ? renderChat() : null}
         {activeTab === 'Archive' ? renderArchive() : null}
         {activeTab === 'Profile' ? <ProfileScreen onLogout={() => setIsAuthenticated(false)} /> : null}
       </View>
       <View style={{ flexDirection: 'row', borderTopWidth: 1, borderTopColor: '#d1d5db', backgroundColor: '#fff' }}>
-        <TabButton label="Board" active={activeTab === 'Board'} onPress={() => setActiveTab('Board')} />
-        <TabButton label="Create" active={activeTab === 'Create'} onPress={() => setActiveTab('Create')} />
+                
+        {/* FIXME: Always to main screen? */}
+        <TabButton 
+          label="Board"
+          active={activeTab === 'Board'} 
+          onPress={() => {
+            if (activeTab === 'Board') {setBoardStack([{name: 'Board'}]);
+            } else {
+              setActiveTab('Board');
+            }
+          }}
+        />
+
+        <TabButton
+          label="Chat"
+          active={activeTab === 'Chat'}
+          onPress={() => {
+            if (activeTab === 'Chat') {
+              setChatStack([{ name: 'Chat' }]); // reset root
+            } else {
+              setActiveTab('Chat');
+            }
+          }}
+        />
+
         <TabButton label="Archive" active={activeTab === 'Archive'} onPress={() => setActiveTab('Archive')} />
         <TabButton label="Profile" active={activeTab === 'Profile'} onPress={() => setActiveTab('Profile')} />
       </View>

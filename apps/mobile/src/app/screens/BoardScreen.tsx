@@ -1,25 +1,44 @@
 import React from 'react';
 import { Pressable } from 'react-native';
-import { Event, EventStatus } from '../../types/models';
+import { Event, EventStatus, JoinStatus } from '../../types/models';
 import { useAppStore } from '../../store/AppStore';
 import { EventCard } from '../../components/EventCard';
 import { Screen } from '../../ui/Screen';
 import { Text } from '../../ui/Text';
 
-export const BoardScreen = ({ onOpenEvent }: { onOpenEvent: (event: Event) => void }) => {
+export const BoardScreen = ({ 
+  onOpenEvent,
+  onCreateEvent,
+}: { 
+  onOpenEvent: (event: Event) => void;
+  onCreateEvent: () => void;
+}) => {
   const { events, users, currentUser } = useAppStore();
 
-  const list = events.filter((event) =>
-    [EventStatus.Posted, EventStatus.Ongoing].includes(event.status)
-  );
+  // Event filter for board
+  const list = events.filter((event) => {
+    if (![EventStatus.Posted, EventStatus.Ongoing].includes(event.status)) return false;
+    
+    const me = event.participants.find((p) => p.userId === currentUser.id);
+
+    const related = event.hostUserId === currentUser.id || !!me;
+    if (!related) return false;
+
+    if (me && (me.status === JoinStatus.Going || me.status === JoinStatus.Maybe)) {
+      return false;
+    }
+
+    return true;
+  });
 
   return (
     <Screen
+      titleAlign="left"
       title={<Text style={{ fontSize: 24, fontWeight: '800' }}>Board</Text>}
       subtitle={<Text style={{ opacity: 0.8 }}>Posted and ongoing events.</Text>}
       overlay={
         <Pressable
-          onPress={() => {}}
+          onPress={onCreateEvent}
           style={{
             position: 'absolute',
             right: 24,
