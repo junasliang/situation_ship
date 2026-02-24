@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { Modal, ScrollView, View, Pressable } from 'react-native';
+import { KeyboardAvoidingView, Platform } from 'react-native';
 import { AttachmentList } from '../../components/AttachmentList';
 import { BadgePickerSheet } from '../../components/BadgePickerSheet';
 import { Composer } from '../../components/Composer';
@@ -13,6 +14,29 @@ import { Input } from '../../ui/Input';
 import { Screen } from '../../ui/Screen';
 import { Text } from '../../ui/Text';
 import { timeUntil } from '../../utils/time';
+import { Ionicons } from '@expo/vector-icons';
+
+const MenuItem = ({
+  label,
+  onPress,
+  danger,
+}: {
+  label: string;
+  onPress: () => void;
+  danger?: boolean;
+}) => (
+  <Pressable
+    onPress={onPress}
+    style={{
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+    }}
+  >
+    <Text style={{ fontWeight: '700', color: danger ? '#b91c1c' : '#111827' }}>
+      {label}
+    </Text>
+  </Pressable>
+);
 
 export const RoomScreen = ({ event, onBack }: { event: Event; onBack: () => void }) => {
   const {
@@ -26,8 +50,11 @@ export const RoomScreen = ({ event, onBack }: { event: Event; onBack: () => void
     assignBadge,
   } = useAppStore();
 
+  const [menuOpen, setMenuOpen] = useState(false);
+
   const [showParticipants, setShowParticipants] = useState(false);
   const [showBadgePicker, setShowBadgePicker] = useState(false);
+  const [showAttachments, setShowAttachments] = useState(false);
   const [linkInput, setLinkInput] = useState('');
 
   const roomLocked = event.status === EventStatus.Removed;
@@ -59,62 +86,164 @@ export const RoomScreen = ({ event, onBack }: { event: Event; onBack: () => void
   }
 
   return (
-    <Screen scroll={false}>
-      <Button label="Back" variant="secondary" onPress={onBack} />
-      <Card>
-        <Text style={{ fontSize: 18, fontWeight: '700' }}>{event.title}</Text>
-        <Text>{timeUntil(event.endTime)}</Text>
-        <Text style={{ opacity: 0.8 }}>Room will disappear after event ends.</Text>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <Button label={showParticipants ? 'Hide Participants' : 'Show Participants'} variant="secondary" onPress={() => setShowParticipants((value) => !value)} />
-          {isHost ? <Button label="Assign Badge" variant="secondary" onPress={() => setShowBadgePicker(true)} /> : null}
-        </View>
-      </Card>
+    <Screen
+      titleAlign="center"
+      title={
+        <Text style={{ fontSize: 18, fontWeight: '800' }}>
+          {event.title}
+        </Text>
+      }
+      left={
+        <Pressable onPress={onBack} hitSlop={12}>
+          <Ionicons name="chevron-back" size={28} color="#111827" />
+        </Pressable>
+      }
+      right={
+        <Pressable onPress={() => setMenuOpen(true)} hitSlop={12}>
+          <Ionicons name="menu" size={24} color="#111827" />
+        </Pressable>
+      }
+      scroll={false} 
+    >
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 130 : 0} // Typing and keyboard gap
+      >
+        <View style={{ flex: 1 }}>
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ gap: 8, paddingBottom: 12 }}
+            showsVerticalScrollIndicator={false}
+          >
+            {messages.map((message, index) => {
 
-      {showParticipants ? (
-        <Card>
-          <Text style={{ fontWeight: '700' }}>Participants</Text>
-          <View style={{ gap: 8 }}>
-            {participantUsers.map(({ participant, user }) =>
-              user ? <ParticipantRow key={participant.userId} user={user} status={participant.status} /> : null
-            )}
+              const prev = messages[index - 1];
+              const next = messages[index + 1];
+
+              const mine = message.senderUserId === currentUser.id;
+
+              const isSameAsPrev =
+                prev && prev.senderUserId === message.senderUserId;
+
+              const isSameAsNext =
+                next && next.senderUserId === message.senderUserId;
+
+              return (
+                <MessageBubble
+                  key={message.id}
+                  message={message}
+                  sender={users.find((u) => u.id === message.senderUserId)}
+                  mine={mine}
+
+                  // ⭐ 新增 props
+                  showAvatar={!mine && !isSameAsPrev}
+                  showName={!mine && !isSameAsPrev}
+
+                  groupTop={!isSameAsPrev}
+                  groupBottom={!isSameAsNext}
+                />
+              );
+            })}
+          </ScrollView>
+
+          <View style={{ paddingTop: 8 }}>
+            <Composer onSend={(text) => sendMessage(event.id, text)} />
           </View>
-        </Card>
-      ) : null}
-
-      <Card style={{ flex: 1 }}>
-        <Text style={{ fontWeight: '700' }}>Messages</Text>
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ gap: 8, paddingBottom: 8 }}>
-          {messages.map((message) => (
-            <MessageBubble key={message.id} message={message} sender={users.find((entry) => entry.id === message.senderUserId)} mine={message.senderUserId === currentUser.id} />
-          ))}
-        </ScrollView>
-        <Composer onSend={(text) => sendMessage(event.id, text)} />
-      </Card>
-
-      <Card>
-        <Text style={{ fontWeight: '700' }}>Attachments</Text>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <Input placeholder="https://..." value={linkInput} onChangeText={setLinkInput} style={{ flex: 1 }} />
-          <Button
-            label="Add Link"
-            onPress={async () => {
-              await addAttachment(event.id, AttachmentType.Link, linkInput);
-              setLinkInput('');
-            }}
-          />
         </View>
-        <Button label="Add Photo (Stub)" variant="secondary" onPress={() => addAttachment(event.id, AttachmentType.Photo, `placeholder://photo-${Date.now()}`)} />
-        <AttachmentList attachments={event.attachments} />
-      </Card>
+        
+        <Modal
+          visible={menuOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setMenuOpen(false)}
+        >
 
-      <BadgePickerSheet
-        visible={showBadgePicker}
-        onClose={() => setShowBadgePicker(false)}
-        participants={participantUsers.map((item) => item.user!)}
-        badges={badges}
-        onAssign={(participantUserId, badgeId) => assignBadge(event.id, participantUserId, badgeId)}
-      />
+          <Pressable
+            onPress={() => setMenuOpen(false)}
+            style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.15)' }}
+          >
+
+            <View
+              pointerEvents="box-none"
+              style={{
+                position: 'absolute',
+                top: 60,
+                right: 16,
+                width: 220,
+                backgroundColor: '#fff',
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: '#e5e7eb',
+                overflow: 'hidden',
+              }}
+            >
+              <MenuItem
+                label={showParticipants ? 'Hide participants' : 'Show participants'}
+                onPress={() => {
+                  setMenuOpen(false);
+                  setShowParticipants((v) => !v);
+                }}
+              />
+
+              {isHost ? (
+                <MenuItem
+                  label="Assign badge"
+                  onPress={() => {
+                    setMenuOpen(false);
+                    setShowBadgePicker(true);
+                  }}
+                />
+              ) : null}
+
+              <MenuItem
+                label={showAttachments ? 'Hide attachments' : 'Attachments'}
+                onPress={() => {
+                  setMenuOpen(false);
+                  setShowAttachments((v) => !v);
+                }}
+              />
+            </View>
+          </Pressable>
+        </Modal>
+
+        {/* ===== Turn on when needed ===== */}
+        {showParticipants ? (
+          <Card>
+            <Text style={{ fontWeight: '700' }}>Participants</Text>
+            <View style={{ gap: 8 }}>
+              {participantUsers.map(({ participant, user }) =>
+                user ? <ParticipantRow key={participant.userId} user={user} status={participant.status} /> : null
+              )}
+            </View>
+          </Card>
+        ) : null}
+
+        {showAttachments ? (
+          <Card>
+            <Text style={{ fontWeight: '700' }}>Attachments</Text>
+            <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}>
+              <Input placeholder="https://..." value={linkInput} onChangeText={setLinkInput} style={{ flex: 1 }} />
+              <Button
+                label="Add"
+                onPress={async () => {
+                  await addAttachment(event.id, AttachmentType.Link, linkInput);
+                  setLinkInput('');
+                }}
+              />
+            </View>
+            <AttachmentList attachments={event.attachments} />
+          </Card>
+        ) : null}
+
+        <BadgePickerSheet
+          visible={showBadgePicker}
+          onClose={() => setShowBadgePicker(false)}
+          participants={participantUsers.map((item) => item.user!)}
+          badges={badges}
+          onAssign={(participantUserId, badgeId) => assignBadge(event.id, participantUserId, badgeId)}
+        />
+      </KeyboardAvoidingView>
     </Screen>
   );
 };

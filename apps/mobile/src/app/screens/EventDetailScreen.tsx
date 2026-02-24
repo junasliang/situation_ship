@@ -44,12 +44,6 @@ export const EventDetailScreen = ({
           {event.title}
         </Text>
       }
-      // FIXME: Info in card
-      // subtitle={
-      //   <Text>
-      //     Host: {host?.displayName ?? 'Unknown'}
-      //   </Text>
-      // }
       left={
         <Pressable onPress={onBack} hitSlop={12}>
           <Ionicons name="chevron-back" size={28} color="#111827" />
